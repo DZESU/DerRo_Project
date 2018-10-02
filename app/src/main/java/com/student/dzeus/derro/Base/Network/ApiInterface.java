@@ -9,4 +9,7 @@ public interface ApiInterface {
     @POST("api")
     Call<String> getAPI(@Body String param);
 
+    @POST("der_ro_api")
+    Call<String> getAPINoParam();
+
 }

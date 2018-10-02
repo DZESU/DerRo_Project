@@ -1,11 +1,16 @@
 package com.student.dzeus.derro.View.View.Activity;
 
+import android.arch.lifecycle.Observer;
+import android.arch.lifecycle.ViewModelProviders;
 import android.databinding.DataBindingUtil;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.annotation.Nullable;
+import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 
+import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.Status;
+import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.places.Place;
 import com.google.android.gms.location.places.ui.PlaceAutocompleteFragment;
 import com.google.android.gms.location.places.ui.PlaceSelectionListener;
@@ -15,44 +20,42 @@ import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
-import com.student.dzeus.derro.Base.Network.Parameter;
-import com.student.dzeus.derro.Base.Network.RetrofitClient;
 import com.student.dzeus.derro.R;
+import com.student.dzeus.derro.View.Model.Company;
+import com.student.dzeus.derro.View.Model.LocationItem;
+import com.student.dzeus.derro.View.ViewModel.CompanyListViewModel;
 import com.student.dzeus.derro.databinding.ActivityMainBinding;
 
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
     private final static String TAG = "pory";
+    private static final int PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION = 9999;
+    private static final int LOCATION_PERMISSION_REQUEST_CODE = 8888;
+    private static boolean mLocationPermissionGranted;
 
+    static final int LOCATION_UPDATE_MIN_DISTANCE = 10;
+    public static final int LOCATION_UPDATE_MIN_TIME = 5000;
     GoogleMap googleMap;
     MapFragment mapFragment;
     ActivityMainBinding binding;
+    CompanyListViewModel viewModel;
+
+    LatLng currentLocation;
+
+    LocationRequest locationRequest;
+    GoogleApiClient googleApiClient;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         binding = DataBindingUtil.setContentView(this, R.layout.activity_main);
+        viewModel = ViewModelProviders.of(this).get(CompanyListViewModel.class);
         mapFragment = (MapFragment) getFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+
         PlaceAutocompleteFragment autocompleteFragment = (PlaceAutocompleteFragment)
                 getFragmentManager().findFragmentById(R.id.place_autocomplete_fragment);
-
-        RetrofitClient retrofitClient = RetrofitClient.getInstance();
-        Call<String> result = retrofitClient.getApi().getAPI(Parameter.getLocation());
-        result.enqueue(new Callback<String>() {
-            @Override
-            public void onResponse(Call<String> call, Response<String> response) {
-                Log.d(TAG, "onResponse: "+response.body().toString());
-            }
-
-            @Override
-            public void onFailure(Call<String> call, Throwable t) {
-                Log.d(TAG, "onFailure: "+t.toString());
-            }
-        });
 
         autocompleteFragment.setOnPlaceSelectedListener(new PlaceSelectionListener() {
             @Override
@@ -69,15 +72,37 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         });
     }
+
+
     public void onMapReady(GoogleMap googleMap) {
         this.googleMap = googleMap;
-        Log.d(TAG, "onMapReady: hello");
+//        MoveCamera(new LatLng(11.555976, 104.905556));
+
+        viewModel.getListCompany().observe(this, new Observer<List<Company>>() {
+            @Override
+            public void onChanged(@Nullable List<Company> companies) {
+                for (Company company : companies) {
+                    for (LocationItem locationItem : company.getLocation()) {
+                        LatLng latLng = new LatLng(locationItem.getLatitude(), locationItem.getLongitude());
+                        AddMarkerOnMap(latLng, locationItem.getName());
+                    }
+                }
+            }
+        });
+
+    }
+
+    private void AddMarkerOnMap(LatLng latLng, String title) {
         this.googleMap.addMarker(new MarkerOptions()
-                .position(new LatLng(0, 0))
-                .title("Marker"));
+                .position(latLng)
+                .title(title));
     }
+
     private void MoveCamera(LatLng latLng) {
-        googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 10));
+        googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15));
     }
+
+
+
 
 }

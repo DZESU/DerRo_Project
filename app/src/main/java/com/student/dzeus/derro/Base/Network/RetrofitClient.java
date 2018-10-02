@@ -7,7 +7,7 @@ import retrofit2.converter.scalars.ScalarsConverterFactory;
 public class RetrofitClient {
 
     private static final String WEB_BASE_URL = "http://localhost/DerRo/php/";
-    private static final String Emulator_BASE_URL = "http://127.0.0.1:8000/api/der_ro_api/";
+    private static final String Emulator_BASE_URL = "http://10.0.2.2:8000/api/";
     private static RetrofitClient mInstance;
     private static Retrofit retrofit;
     private static OkHttpClient.Builder mHttpClient =null;
