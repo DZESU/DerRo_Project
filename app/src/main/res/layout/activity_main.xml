@@ -5,6 +5,12 @@
 
     <data>
 
+
+
+        <variable
+            name="handler"
+            type="android.view.View.OnClickListener"/>
+
     </data>
 
     <android.support.constraint.ConstraintLayout
@@ -38,7 +44,6 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-
                 android:background="@drawable/round_edge_white_box"
                 android:elevation="10dp">
 
@@ -59,11 +64,26 @@
                     android:id="@+id/appCompatSpinner"
                     android:layout_width="0dp"
                     android:layout_height="50dp"
-                    android:layout_marginRight="5dp"
+                    android:dropDownWidth="wrap_content"
+                    android:layout_marginEnd="5dp"
                     android:layout_weight="1" />
 
             </LinearLayout>
 
         </LinearLayout>
+
+
+        <ImageView
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:id="@+id/test" />
+        <Button
+            android:id="@+id/btn_find"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="16dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
     </android.support.constraint.ConstraintLayout>
 </layout>
