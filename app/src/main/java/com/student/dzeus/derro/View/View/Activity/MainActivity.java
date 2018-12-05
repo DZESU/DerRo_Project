@@ -1,6 +1,7 @@
 package com.student.dzeus.derro.View.View.Activity;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.arch.lifecycle.Observer;
 import android.arch.lifecycle.ViewModelProviders;
 import android.content.Context;
@@ -49,7 +50,12 @@ import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MapStyleOptions;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.Polygon;
+import com.google.android.gms.maps.model.PolygonOptions;
+import com.google.android.gms.maps.model.Polyline;
+import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.gson.Gson;
@@ -73,9 +79,11 @@ import java.net.MalformedURLException;
 import java.net.ProtocolException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, AdapterView.OnItemSelectedListener, LocationListener, View.OnClickListener, PlaceSelectionListener {
+public class MainActivity extends AppCompatActivity implements GoogleMap.OnMapLongClickListener,OnMapReadyCallback, AdapterView.OnItemSelectedListener, LocationListener, View.OnClickListener, PlaceSelectionListener {
     private final static String TAG = "pory";
 
     private static final float DEFAULT_ZOOM = 15f;
@@ -90,7 +98,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     LocationManager locationManager;
 
     LatLng closest;
-    LatLng current;
+    LatLng current,partnerLocation;
 
 
     @Override
@@ -101,6 +109,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
         binding.btnFind.setOnClickListener(this);
+        binding.btnFindNearFriend.setOnClickListener(this);
 
         locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
 
@@ -129,31 +138,24 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
+        boolean success = googleMap.setMapStyle(
+                MapStyleOptions.loadRawResourceStyle(
+                        this, R.raw.map_style_json));
+        if (!success) {
+            Log.e(TAG, "Style parsing failed.");
+        }
         this.googleMap = googleMap;
 //        MoveCamera(new LatLng(11.555976, 104.905556));
         Log.d(TAG, " initializing map Ready");
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this,
-                Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            String[] permissions = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION};
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                requestPermissions(permissions, REQUEST_CODE_LOCATION);
+            }
             return;
         }
-        this.googleMap.setMyLocationEnabled(true);
-//            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,0,0, this);
-        locationManager.requestSingleUpdate(LocationManager.GPS_PROVIDER, this, null);
+        loadUserLocation();
 
-//            googleMap.getUiSettings().setMyLocationButtonEnabled(false);
-
-
-        viewModel.getListCompany().observe(this, companies -> {
-            Log.d(TAG, "onChanged: " + companies.size());
-            for (Company company : companies) {
-                for (LocationItem locationItem : company.getLocation()) {
-                    LatLng latLng = new LatLng(locationItem.getLatitude(), locationItem.getLongitude());
-                    AddMarkerOnMap(latLng, locationItem.getName(), company.getCompany_id());
-                    viewModel.getLatLngList().add(latLng);
-                }
-            }
-        });
 
 
     }
@@ -215,7 +217,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         } else if (id == 3) {
             markerOptions.icon((BitmapDescriptorFactory.fromBitmap(getMarkerBitmapFromView(R.drawable.smartluy))));
 
-        }else{
+        } else {
 
         }
         this.googleMap.addMarker(markerOptions);
@@ -236,29 +238,291 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void FillterMarker(int id) {
 
-        Log.d(TAG, "FillterMarker: "+id);
+        Log.d(TAG, "FillterMarker: " + id);
         viewModel.getLatLngList().clear();
 
-        if (viewModel.hasCompany()) {
-                googleMap.clear();
-                if (id == 0) {
-                    for (Company company : viewModel.getListCompany().getValue()) {
-                        for (LocationItem locationItem : company.getLocation()) {
-                            LatLng latLng = new LatLng(locationItem.getLatitude(), locationItem.getLongitude());
-                            AddMarkerOnMap(latLng, locationItem.getName(), company.getCompany_id());
-                            viewModel.getLatLngList().add(latLng);
-
-                        }
-                    }
-                } else {
-                    for (LocationItem locationItem : viewModel.fillterCompany(id).getLocation()) {
+        if (viewModel !=null && viewModel.getListCompany() != null && viewModel.getListCompany().getValue()!=null  ) {
+            googleMap.clear();
+            if (id == 0) {
+                for (Company company : viewModel.getListCompany().getValue()) {
+                    for (LocationItem locationItem : company.getLocation()) {
                         LatLng latLng = new LatLng(locationItem.getLatitude(), locationItem.getLongitude());
-                        AddMarkerOnMap(latLng, locationItem.getName(), locationItem.getCompanyId());
+                        AddMarkerOnMap(latLng, locationItem.getName(), company.getCompany_id());
                         viewModel.getLatLngList().add(latLng);
 
                     }
                 }
+            } else {
+                for (LocationItem locationItem : viewModel.fillterCompany(id).getLocation()) {
+                    LatLng latLng = new LatLng(locationItem.getLatitude(), locationItem.getLongitude());
+                    AddMarkerOnMap(latLng, locationItem.getName(), locationItem.getCompanyId());
+                    viewModel.getLatLngList().add(latLng);
+
+                }
+            }
         }
+    }
+
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_CODE_LOCATION) {
+            if (grantResults[0] == PackageManager.PERMISSION_GRANTED)
+                loadUserLocation();
+
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private void loadUserLocation() {
+        FusedLocationProviderClient locationProviderClient = LocationServices.getFusedLocationProviderClient(this);
+
+        boolean isStyle = this.googleMap.setMapStyle(new MapStyleOptions(getResources().getString(R.string.style_map_json)));
+        Log.d(TAG, "onMapReady: "+isStyle);
+        this.googleMap.setMyLocationEnabled(true);
+        this.googleMap.setOnMapLongClickListener(this);
+//            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,0,0, this);
+        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 100,this);
+
+//            googleMap.getUiSettings().setMyLocationButtonEnabled(false);
+
+
+        viewModel.getListCompany().observe(this, companies -> {
+            Log.d(TAG, "onChanged: " + companies.size());
+            for (Company company : companies) {
+                for (LocationItem locationItem : company.getLocation()) {
+                    LatLng latLng = new LatLng(locationItem.getLatitude(), locationItem.getLongitude());
+                    AddMarkerOnMap(latLng, locationItem.getName(), company.getCompany_id());
+                    viewModel.getLatLngList().add(latLng);
+                }
+            }
+        });
+        Task<Location> locationTask = locationProviderClient.getLastLocation();
+        locationTask.addOnCompleteListener(task -> {
+            if (task.isSuccessful()) {
+                Location location = task.getResult();
+                if (location != null) {
+                    Log.d("pory", "onComplete: " + location.toString());
+                    current = new LatLng(location.getLatitude(), location.getLongitude());
+                    MoveCamera(current);
+                }
+            } else {
+                Log.d("pory", "Error: " + task.getException());
+            }
+        });
+    }
+    private List<LatLng> decodePoly(String encoded) {
+
+        List<LatLng> poly = new ArrayList<LatLng>();
+        int index = 0, len = encoded.length();
+        int lat = 0, lng = 0;
+
+        while (index < len) {
+            int b, shift = 0, result = 0;
+            do {
+                b = encoded.charAt(index++) - 63;
+                result |= (b & 0x1f) << shift;
+                shift += 5;
+            } while (b >= 0x20);
+            int dlat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+            lat += dlat;
+
+            shift = 0;
+            result = 0;
+            do {
+                b = encoded.charAt(index++) - 63;
+                result |= (b & 0x1f) << shift;
+                shift += 5;
+            } while (b >= 0x20);
+            int dlng = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+            lng += dlng;
+
+            LatLng p = new LatLng((((double) lat / 1E5)),
+                    (((double) lng / 1E5)));
+            poly.add(p);
+        }
+
+        return poly;
+    }
+
+    private LatLng FindCloestToCurrentLocation(LatLng src ,List<LatLng> latLngList) {
+        LatLng closet = new LatLng(0, 0);
+        float[] results = new float[1];
+        float closetdistance = 100000000000000000f;
+        for (LatLng latLng : latLngList) {
+            Location.distanceBetween(src.latitude, src.longitude,
+                    latLng.latitude, latLng.longitude, results);
+            if (closetdistance > results[0]) {
+                closetdistance = results[0];
+                closet = latLng;
+                Log.d(TAG, "FindCloestToCurrentLocation: closest found " + closet);
+            }
+        }
+
+        AddMarkerOnMap(closet, "Closest", 4);
+        return closet;
+    }
+
+    private float FindCloestForEachCompany(LatLng src ,List<LocationItem> locationItems) {
+
+        List<LatLng> latLngList = new ArrayList<>();
+
+        for(LocationItem locationItem : locationItems){
+            latLngList.add(new LatLng(locationItem.getLatitude(),locationItem.getLongitude()));
+        }
+
+        LatLng closet = new LatLng(0, 0);
+        float[] results = new float[1];
+        float closetdistance = 100000000000000000f;
+        for (LatLng latLng : latLngList) {
+            Location.distanceBetween(src.latitude, src.longitude,
+                    latLng.latitude, latLng.longitude, results);
+            if (closetdistance > results[0]) {
+                closetdistance = results[0];
+                closet = latLng;
+                Log.d(TAG, "FindCloestToCurrentLocation: closest found " + closet);
+            }
+        }
+
+        AddMarkerOnMap(closet, "Closest", 4);
+        return closetdistance;
+    }
+
+    private void FindClosestFromPointsToEachCompany(LatLng point1, LatLng point2 , List<Company> companies){
+
+        float[][] closestFromEachcompany = new float[5][5];
+        int i = 0;
+        for (Company company: companies) {
+            closestFromEachcompany[i][0] = FindCloestForEachCompany(point1,company.getLocation());
+            closestFromEachcompany[i][1] = FindCloestForEachCompany(point2,company.getLocation());
+            i++;
+
+        }
+
+        Log.d(TAG, "FindClosestFromPointsToEachCompany: "+closestFromEachcompany.toString());
+
+        int closeIdex=0;
+        for(int j = 1 ; j < 5 ; j++){
+            if(closestFromEachcompany[j][1] < closestFromEachcompany[j-1][1] && closestFromEachcompany[j][0] < closestFromEachcompany[j-1][0]){
+                closeIdex = j;
+            }
+        }
+
+        Log.d(TAG, "FindClosestFromPointsToEachCompany: Closest Comapany id"+ closeIdex);
+
+    }
+
+    public void getDistance(LatLng src, LatLng des) {
+
+        RequestQueue queue = Volley.newRequestQueue(this);
+        String url = "https://maps.googleapis.com/maps/api/directions/json?origin=" + src.latitude + "," + src.longitude + "&destination=" + des.latitude + "," + des.longitude + "*&mode=driving&key=" + getResources().getString(R.string.google_maps_key);
+
+        Log.d(TAG, "getDistance: " + url);
+
+        StringRequest stringRequest = new StringRequest(Request.Method.POST, url,
+                response -> {
+                    Gson gson = new Gson();
+                    Log.d(TAG, "onResponse: " + response);
+                    RouteResponse routeResponse = gson.fromJson(response,RouteResponse.class);
+                    Log.d(TAG, "onResponse: " + routeResponse);
+                    
+                    if(!routeResponse.getRoutes().isEmpty()||routeResponse.getGeocodedWaypoints()!=null) {
+                        List<LatLng> list = decodePoly(routeResponse.getRoutes().get(0).getOverviewPolyline().getPoints());
+//
+                        for (int z = 0; z < list.size() - 1; z++) {
+                            LatLng source = list.get(z);
+                            LatLng dest = list.get(z + 1);
+                            Polyline line = googleMap.addPolyline(new PolylineOptions()
+                                    .add(new LatLng(source.latitude, source.longitude),
+                                            new LatLng(dest.latitude, dest.longitude))
+                                    .width(5).color(Color.BLUE).geodesic(true));
+                        }
+                    }
+//                    PolylineOptions options = new PolylineOptions().width(5).color(Color.BLUE).geodesic(true);
+//                    for (int z = 0; z < list.size(); z++) {
+//                        LatLng point = list.get(z);
+//                        options.add(point);
+//                    }
+//                    line = myMap.addPolyline(options);
+                    //maybe try looping and send all latlng one by one and compare it
+//                        Log.d(TAG, "onResponse: "+routeResponse.getRoutes().get(0).getLegs().get(0).getDistance());
+
+                }, error -> Log.d(TAG, "Error: " + error.getMessage()));
+
+// Add the request to the RequestQueue.
+
+        queue.add(stringRequest);
+    }
+
+    private CompanyClosestTo ClosestOfCompany(Company company,LatLng point1, LatLng point2){
+
+
+        LatLng closestToSrc = new LatLng(0,0);
+        LatLng closestToDes = new LatLng(0,0);
+        List<LatLng> latLngList = new ArrayList<>();
+
+        for(LocationItem locationItem : company.getLocation()){
+            latLngList.add(new LatLng(locationItem.getLatitude(),locationItem.getLongitude()));
+        }
+
+        float[] distancePoint1 = new float[1];
+        float[] distancePoint2 = new float[1];
+        float closetdistance1 = 100000000000000000f;
+        float closetdistance2 = 100000000000000000f;
+        for (LatLng latLng : latLngList) {
+            /// Point 1 Src
+            Location.distanceBetween(point1.latitude, point1.longitude,
+                    latLng.latitude, latLng.longitude, distancePoint1);
+            if (closetdistance1 > distancePoint1[0]) {
+                closetdistance1 = distancePoint1[0];
+                closestToSrc = latLng;
+            }
+            /// Point 2 Des
+            Location.distanceBetween(point2.latitude, point2.longitude,
+                    latLng.latitude, latLng.longitude, distancePoint2);
+            if (closetdistance2 > distancePoint2[0]) {
+                closetdistance2 = distancePoint2[0];
+                closestToDes = latLng;
+            }
+
+        }
+        //Log.d(TAG, "Closest to Des is " + closestToDes + " distance : "+ distancePoint2[0]);
+        //Log.d(TAG, "Closest to Src is " + closestToSrc + " distance : "+ distancePoint1[0]);
+        //AddMarkerOnMap(closestToSrc,"Clostest to Src",0.2f);
+        //AddMarkerOnMap(closestToDes,"Clostest to Des",0.2f);
+
+        return new CompanyClosestTo(distancePoint1[0],distancePoint2[0],company.getCompanyName(),closestToSrc);
+
+    }
+
+    private class CompanyClosestTo{
+        public CompanyClosestTo(float src, float des,String name, LatLng closest){
+            this.des = des;
+            this.src = src;
+            this.name = name;
+            this.closest = closest;
+        }
+        public CompanyClosestTo(){
+
+        }
+        public LatLng closest;
+        public String name;
+        public float src;
+        public float des;
+
+        public float getSumDistance(){
+            return src+des;
+        }
+
+
+    }
+
+    @Override
+    public void onMapLongClick(LatLng latLng) {
+        partnerLocation = latLng;
+        Log.d(TAG, "onMapClick: "+latLng);
+        AddMarkerOnMap(partnerLocation,"Partner",4);
     }
 
     @Override
@@ -285,7 +549,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     public void onProviderDisabled(String provider) {
         Log.d(TAG, "onProviderDisabled: ");
     }
-
+    int index = 0;
+    List<CompanyClosestTo> companyDistanceList = new ArrayList<>();
     @Override
     public void onClick(View v) {
         switch (v.getId()) {
@@ -294,8 +559,37 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 //                        .load("http://10.0.2.2:8000/storage/aa.png")
 //                        .into(binding.test);
                 Log.d(TAG, "onClick: fillter");
-                getDistance(current,viewModel.getLatLngList().get(0));
-                AddMarkerOnMap(FindCloestToCurrentLocation(viewModel.getLatLngList()),"Closet",4);
+                getDistance(current,companyDistanceList.get(index).closest);
+                AddMarkerOnMap(companyDistanceList.get(index).closest, "Closet", 4);
+                break;
+
+            case R.id.btn_find_near_friend:
+
+
+//                AddMarkerOnMap(FindCloestToCurrentLocation(partnerLocation,viewModel.getLatLngList()), "Closet", 4);
+
+
+                companyDistanceList.clear();
+                for(int i = 0; i < viewModel.getListCompany().getValue().size(); i++){
+                    CompanyClosestTo company = ClosestOfCompany(viewModel.getListCompany().getValue().get(i),current,partnerLocation);
+                    Log.d(TAG, "onClick: "+company.name+":"+company.getSumDistance());
+                    companyDistanceList.add(company);
+                }
+
+                Collections.sort(companyDistanceList, (o1, o2) -> Float.compare(o1.getSumDistance(),o2.getSumDistance()));
+
+
+                for(int i = 1 ; i < companyDistanceList.size(); i++){
+                    if(companyDistanceList.get(i).getSumDistance() < companyDistanceList.get(i-1).getSumDistance()){
+                        index = i;
+                        //Log.d(TAG, "onClick: "+i);
+                    }
+                }
+                Log.d(TAG, "Closest Point: "+companyDistanceList.get(index).name+":"+companyDistanceList.get(index).getSumDistance());
+                Log.d(TAG, "Sort Array: "+companyDistanceList.toString());
+
+                AddMarkerOnMap(current,"Me",1f);
+                AddMarkerOnMap(partnerLocation,"You",1f);
                 break;
         }
     }
@@ -322,89 +616,4 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     public void onNothingSelected(AdapterView<?> parent) {
 
     }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQUEST_CODE_LOCATION) {
-
-            loadUserLocation();
-        }
-    }
-
-    private void loadUserLocation() {
-        FusedLocationProviderClient locationProviderClient = LocationServices.getFusedLocationProviderClient(this);
-
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            String[] permissions = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION};
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                requestPermissions(permissions, REQUEST_CODE_LOCATION);
-            }
-            return;
-        }
-
-        Task<Location> locationTask = locationProviderClient.getLastLocation();
-        locationTask.addOnCompleteListener(task -> {
-            if (task.isSuccessful()) {
-                Location location = task.getResult();
-                if (location != null) {
-                    Log.d("pory", "onComplete: " + location.toString());
-                    current = new LatLng(location.getLatitude(), location.getLongitude());
-                    MoveCamera(current);
-                }
-            } else {
-                Log.d("pory", "Error: " + task.getException());
-            }
-        });
-    }
-
-
-    private LatLng FindCloestToCurrentLocation(List<LatLng> latLngList){
-        LatLng closet = new LatLng(0,0);
-        float[] results = new float[1];
-        float closetdistance= 100000000000000000f;
-        for(LatLng latLng : latLngList){
-            Location.distanceBetween(current.latitude, current.longitude,
-                    latLng.latitude, latLng.longitude, results);
-            if(closetdistance>results[0]){
-                closetdistance = results[0];
-                closet = latLng;
-                Log.d(TAG, "FindCloestToCurrentLocation: closest found " + closet);
-            }
-        }
-
-        return closet;
-    }
-
-    public void getDistance(LatLng src , LatLng des){
-        RequestQueue queue = Volley.newRequestQueue(this);
-        String url = "https://maps.googleapis.com/maps/api/directions/json?/json?origin=" + src.latitude + "," + src.longitude+ "&destination=" + des.latitude+ "," + des.longitude+ "&sensor=false&units=metric&mode=driving&key="+getResources().getString(R.string.google_maps_key);
-
-        StringRequest stringRequest = new StringRequest(Request.Method.POST, url,
-                new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        // Display the first 500 characters of the response string.
-                        Gson gson = new Gson();
-                        RouteResponse routeResponse = gson.fromJson(response,RouteResponse.class);
-
-                        //maybe try looping and send all latlng one by one and compare it
-                        Log.d(TAG, "onResponse: "+routeResponse.getRoutes().get(0).getLegs().get(0).getDistance());
-
-                    }
-                }, new Response.ErrorListener() {
-            @Override
-            public void onErrorResponse(VolleyError error) {
-                        Log.d(TAG, "Error: "+error.getMessage());
-            }
-        });
-
-// Add the request to the RequestQueue.
-        queue.add(stringRequest);
-    }
-
-    private void Test(){
-
-    }
-
 }

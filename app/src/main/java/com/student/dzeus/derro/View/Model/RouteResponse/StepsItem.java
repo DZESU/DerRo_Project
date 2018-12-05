@@ -1,12 +1,17 @@
 package com.student.dzeus.derro.View.Model.RouteResponse;
 
+import com.google.gson.annotations.SerializedName;
+
 public class StepsItem{
 	private Duration duration;
+	@SerializedName("start_location")
 	private StartLocation startLocation;
 	private Distance distance;
 	private String travelMode;
-	private String htmlInstructions;
+	@SerializedName("end_location")
 	private EndLocation endLocation;
+	@SerializedName("html_instructions")
+	private String htmlInstructions;
 	private Polyline polyline;
 
 	public void setDuration(Duration duration){

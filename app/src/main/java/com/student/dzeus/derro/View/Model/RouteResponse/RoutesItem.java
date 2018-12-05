@@ -1,5 +1,7 @@
 package com.student.dzeus.derro.View.Model.RouteResponse;
 
+import com.google.gson.annotations.SerializedName;
+
 import java.util.List;
 
 public class RoutesItem{
@@ -8,6 +10,7 @@ public class RoutesItem{
 	private List<LegsItem> legs;
 	private List<Object> warnings;
 	private Bounds bounds;
+	@SerializedName("overview_polyline")
 	private OverviewPolyline overviewPolyline;
 	private List<Object> waypointOrder;
 

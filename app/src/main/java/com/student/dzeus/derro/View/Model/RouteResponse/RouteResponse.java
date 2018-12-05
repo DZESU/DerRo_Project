@@ -1,9 +1,12 @@
 package com.student.dzeus.derro.View.Model.RouteResponse;
 
+import com.google.gson.annotations.SerializedName;
+
 import java.util.List;
 
 public class RouteResponse{
 	private List<RoutesItem> routes;
+	@SerializedName("geocoded_waypoints")
 	private List<GeocodedWaypointsItem> geocodedWaypoints;
 	private String status;
 

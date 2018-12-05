@@ -1,10 +1,14 @@
 package com.student.dzeus.derro.View.Model.RouteResponse;
 
+import com.google.gson.annotations.SerializedName;
+
 import java.util.List;
 
 public class GeocodedWaypointsItem{
 	private List<String> types;
+	@SerializedName("geocoded_waypoints")
 	private String geocoderStatus;
+	@SerializedName("place_id")
 	private String placeId;
 
 	public void setTypes(List<String> types){

@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="45dp"
-    android:layout_height="45dp"
+    android:layout_width="30dp"
+    android:layout_height="30dp"
     android:id="@+id/custom_marker">
 
     <ImageView
         android:id="@+id/marker_img"
-        android:layout_width="45dp"
-        android:layout_height="45dp"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
         android:src="@drawable/test"
         />
 

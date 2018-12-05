@@ -1,16 +1,24 @@
 package com.student.dzeus.derro.View.Model.RouteResponse;
 
+import com.google.gson.annotations.SerializedName;
+
 import java.util.List;
 
 public class LegsItem{
 	private Duration duration;
+	@SerializedName("start_location")
 	private StartLocation startLocation;
 	private Distance distance;
+	@SerializedName("start_address")
 	private String startAddress;
+	@SerializedName("end_location")
 	private EndLocation endLocation;
+	@SerializedName("end_address")
 	private String endAddress;
+	@SerializedName("via_waypoint")
 	private List<Object> viaWaypoint;
 	private List<StepsItem> steps;
+	@SerializedName("traffic_speed_entry")
 	private List<Object> trafficSpeedEntry;
 
 	public void setDuration(Duration duration){
